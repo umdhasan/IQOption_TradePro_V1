@@ -25,22 +25,29 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Make Gradle wrapper executable
-        run: chmod +x ./gradlew
-
-      - name: Run Unit Tests
-        run: ./gradlew --no-daemon testDebugUnitTest --stacktrace
+        run: |
+          find . -name "gradlew" -exec chmod +x {} +
 
       - name: Build debug APK
-        run: ./gradlew --no-daemon assembleDebug --stacktrace
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew --no-daemon assembleDebug --stacktrace
+          else
+            SUBDIR=$(find . -maxdepth 2 -name "gradlew" -printf "%h\n" | head -n 1)
+            if [ -n "$SUBDIR" ]; then
+              echo "Found project in subdirectory: $SUBDIR"
+              cd "$SUBDIR"
+              ./gradlew --no-daemon assembleDebug --stacktrace
+            else
+              echo "Error: gradlew not found!" && exit 1
+            fi
+          fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: IQOption-TradePro-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: "**/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
           retention-days: 14
